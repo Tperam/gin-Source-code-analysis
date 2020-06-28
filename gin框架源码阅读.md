@@ -241,9 +241,8 @@ walk:
             n.maxParams = numParams
         }
 
-        // 输入相同字符将会返回
+        // 输入a字符串与b字符串 将会返回字符串 a[n]==b[n]的个数
         // 2 = longestCommonPrefix("ayye", "cywe")
-        
         // Find the longest common prefix.
         // This also implies that the common prefix contains no ':' or '*'
         // since the existing key can't contain those chars.
@@ -487,60 +486,62 @@ walk:
     	n.handlers = handlers
     	n.fullPath = fullPath
     }
-```
-    
-### findWildcard
-    
-    我们对当前方法进行源码展开 ，位置: `gin/tree.go:269`
-    
-    ```go
-    func findWildcard(path string) (wildcard string, i int, valid bool) {
-        // Find start
-        for start, c := range []byte(path) {
-            // A wildcard starts with ':' (param) or '*' (catch-all)
-            if c != ':' && c != '*' {
-                continue
-            }
-            // 检查是否有效
-            // Find end and check for invalid characters
-            valid = true
-            for end, c := range []byte(path[start+1:]) {
-                switch c {
-                    case '/':
-                    // 当查找到 / 时返回通配符后的名字，以及通配符下标，以及当前命名是否有效
-                    return path[start : start+1+end], start, valid
-                    case ':', '*':
-                    valid = false
-                }
-            }
-            return path[start:], start, valid
-        }
-        // 如果没有通配符则直接返回
-    return "", -1, false
-    }
     ```
-    
-    当前这个方法是用于获取通配符，通配符开始位置以及名字，在 `root.addRoute`中起到剥离作用
-    
-    经过以上分析我们已经知道 当`methodTree`为空时我们是如何插入的，也大概了解到了`node`结构体中的属性
-    
-    我们现在展开 `node` 结构体进行分析 `gin/tree.go:96`
-    
-    ```go
-    type node struct {
-    	path      string  // 当前节点路径
-    	indices   string
-    	children  []*node // 子节点列表
-    	handlers  HandlersChain // 当前路径的处理方法
-    	priority  uint32
-    	nType     nodeType // 节点类型 ，root 根节点,param 路由参数节点, catchAll ??, static ??
-    	maxParams uint8 // 最大路由参数
-    	wildChild bool // 是否有动态子路由
-    	fullPath  string // 绝对路径
-    }
-    ```
-    
-    我们回到 `root.addRoute`源码中继续分析
-    
-    
+### `findWildcard`源码
 
+我们对当前方法进行源码展开 ，位置: `gin/tree.go:269`
+
+```go
+func findWildcard(path string) (wildcard string, i int, valid bool) {
+    // Find start
+    for start, c := range []byte(path) {
+        // A wildcard starts with ':' (param) or '*' (catch-all)
+        if c != ':' && c != '*' {
+            continue
+        }
+        // 检查是否有效
+        // Find end and check for invalid characters
+        valid = true
+        for end, c := range []byte(path[start+1:]) {
+            switch c {
+                case '/':
+                // 当查找到 / 时返回通配符后的名字，以及通配符下标，以及当前命名是否有效
+                return path[start : start+1+end], start, valid
+                case ':', '*':
+                valid = false
+            }
+        }
+        return path[start:], start, valid
+    }
+    // 如果没有通配符则直接返回
+	return "", -1, false
+}
+```
+当前这个方法是用于获取通配符，通配符开始位置以及名字，在 `root.addRoute`中起到剥离作用
+
+经过以上分析我们已经知道 当`methodTree`为空时我们是如何插入的，也大概了解到了`node`结构体中的属性
+
+我们现在展开 `node` 结构体进行分析 `gin/tree.go:96`
+
+```go
+type node struct {
+	path      string  // 当前节点路径
+	indices   string
+	children  []*node // 子节点列表
+	handlers  HandlersChain // 当前路径的处理方法
+	priority  uint32 // 优先级 
+	nType     nodeType // 节点类型 ，root 根节点,param 路由参数节点, catchAll ??, static ??
+	maxParams uint8 // 最大路由参数
+	wildChild bool // 是否有动态子路由
+	fullPath  string // 绝对路径
+}
+```
+
+现在，我们开始模拟运行一遍这行代码 [link](post树理解.md)
+
+```go
+r.POST("/register",controller.MemberRegister)
+r.POST("/login",controller.MemberLogin)
+```
+
+思考他进行了哪些操作 
